@@ -1,22 +1,17 @@
 from crewai import Agent
 from utils.google_docs_utils import create_daily_doc
 
-
 def get_agent():
     return Agent(
         name="DocCreatorAgent",
         role="Google Docs Publisher",
-        goal="Create or update a daily Google Doc with the compiled digest.",
-        backstory=(
-            "You are an automation specialist who formats information neatly "
-            "inside Google Workspace documents."
-        ),
+        goal="Create the daily digest doc in Drive.",
+        backstory="You automate Google Workspace formatting.",
         run=run,
     )
 
-
-def run(compiled_stories: list[dict]):
-    print("[DEBUG] DocCreatorAgent entered, len =", len(compiled_stories))
-    url = create_daily_doc(compiled_stories)
+def run(compiled: list[dict]):
+    print("[DEBUG] DocCreatorAgent entered, len =", len(compiled))
+    url = create_daily_doc(compiled)
     print("[DEBUG] DocCreatorAgent returned URL:", url)
     return url
