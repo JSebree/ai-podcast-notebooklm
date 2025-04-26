@@ -7,13 +7,14 @@ def get_agent():
     return Agent(
         name="NotifierAgent",
         role="Notification Dispatcher",
-        goal="Alert the user via SMS and email with the daily digest link.",
+        goal="Alert the user via SMS and fallback email with the digest link.",
         backstory="You ensure timely delivery of daily tech updates.",
         run=run,
     )
 
 
 def run(link: str):
+    """Send SMS, then fallback email if SMS fails."""
     try:
         send_sms(link)
     except Exception:
