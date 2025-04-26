@@ -1,14 +1,14 @@
 import os, datetime, json
-from google.oauth2 import service_account          # ← add this
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 SCOPES = [
     "https://www.googleapis.com/auth/documents",
-    "https://www.googleapis.com/auth/drive",   # <— add Drive scope
+    "https://www.googleapis.com/auth/drive",
 ]
-CREDS_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT")
+
 creds = service_account.Credentials.from_service_account_info(
-    json.loads(CREDS_JSON), scopes=SCOPES
+    json.loads(os.getenv("GOOGLE_SERVICE_ACCOUNT")), scopes=SCOPES
 )
 
 docs_service  = build("docs",  "v1", credentials=creds, cache_discovery=False)
@@ -18,32 +18,45 @@ def create_daily_doc(stories: list[dict]) -> str:
     today = datetime.datetime.now().strftime("%B %d, %Y")
     title = f"Emerging Tech Digest – {today}"
 
-    # 1️⃣  create the Doc in the service-account's My Drive
+    # 1️⃣ create doc
     try:
         doc = docs_service.documents().create(body={"title": title}).execute()
     except Exception as err:
-        import traceback, sys
-        print("[DEBUG] Docs API error:", err, file=sys.stderr)
-        traceback.print_exc()                # full stack trace
-        raise                                 # stop the run so you see red
+        print("[DEBUG] Docs API error:", err)
+        raise
     doc_id = doc["documentId"]
     print("[DEBUG] Created Doc →", doc_id)
 
-    # 2️⃣  move it into the user-defined folder
+    # 2️⃣ move to specified folder
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     if folder_id:
-        # fetch current parents so we can remove them
-        meta = drive_service.files().get(
-            fileId=doc_id, fields="parents"
-        ).execute()
-        previous_parents = ",".join(meta.get("parents", []))
-        drive_service.files().update(
-            fileId=doc_id,
-            addParents=folder_id,
-            removeParents=previous_parents,
-            fields="id, parents",
-        ).execute()
-        print("[DEBUG] Moved Doc; new parents →", res.get("parents"))
+        try:
+            prev = drive_service.files().get(fileId=doc_id, fields="parents").execute()
+            drive_service.files().update(
+                fileId=doc_id,
+                addParents=folder_id,
+                removeParents=",".join(prev.get("parents", [])),
+                fields="id, parents",
+            ).execute()
+            print("[DEBUG] Moved Doc; new parents →", folder_id)
+        except Exception as err:
+            print("[DEBUG] Move error:", err)
+            raise
 
-    # … (continue with your batchUpdate text insertion) …
+    # 3️⃣ optional direct share
+    share_email = os.getenv("SHARE_WITH_EMAIL")
+    if share_email:
+        try:
+            drive_service.permissions().create(
+                fileId=doc_id,
+                body={"type": "user", "role": "writer", "emailAddress": share_email},
+                sendNotificationEmail=False,
+            ).execute()
+            print("[DEBUG] Shared Doc with", share_email)
+        except Exception as err:
+            print("[DEBUG] Share error:", err)
+
+    # 4️⃣ now insert content (placeholder)
+    # ... your batchUpdate requests here ...
+
     return f"https://docs.google.com/document/d/{doc_id}"
