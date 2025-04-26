@@ -7,10 +7,14 @@ def get_agent():
         name="DocCreatorAgent",
         role="Google Docs Publisher",
         goal="Create or update a daily Google Doc with the compiled digest.",
-        backstory="You handle document automation and formatting in Google Workspace.",
+        backstory=(
+            "You are an automation specialist who formats information neatly "
+            "inside Google Workspace documents."
+        ),
         run=run,
     )
 
 
-def run(compiled: list[dict]):
-    return create_daily_doc(compiled)  # -> str (doc URL)
+def run(compiled_stories: list[dict]):
+    """Create the Google Doc and return its URL."""
+    return create_daily_doc(compiled_stories)
