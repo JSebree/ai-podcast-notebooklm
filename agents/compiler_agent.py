@@ -1,32 +1,35 @@
-from crewai import Agent, Message
+from crewai import Agent
+from openai import OpenAI
+client = OpenAI()
+
+PROMPT_TITLE = "Write a punchy podcast episode title (under 12 words) summarizing: "
+PROMPT_SUMMARY = "Provide a 6‑sentence journalistic summary of the following tech news:
+"
 
 def get_agent():
     return Agent(
         name="CompilerAgent",
-        sys_prompt="""Create a full‑paragraph summary (≈6 sentences) for each story, plus a 1‑line catchy podcast episode title.""",
-        fn=run
+        description="Create a full‑paragraph summary and a 1‑line podcast title for each story.",
+        run=run
     )
 
-def run(msg: Message):
+def run(stories: list[dict]):
     compiled = []
-    for story in msg.content:
+    for story in stories:
+        title_prompt   = PROMPT_TITLE + story["title"]
+        summary_prompt = PROMPT_SUMMARY + (story.get("article_snippet") or story["title"])
+        podcast_title = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": title_prompt}]
+        ).choices[0].message.content.strip()
+        summary = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": summary_prompt}]
+        ).choices[0].message.content.strip()
         compiled.append({
             "headline": story["title"],
-            "podcast_title": generate_podcast_title(story["title"]),
-            "summary": summarize(story),
-            "links": story["links"]
+            "podcast_title": podcast_title,
+            "summary": summary,
+            "links": story["links"],
         })
-    return Message(content=compiled)
-
-# -- helper stubs (use your LLM or simple heuristic) --
-from openai import OpenAI
-client = OpenAI()
-
-def generate_podcast_title(title):
-    prompt = f"Write a punchy podcast episode title (under 12 words) summarizing: {title}"
-    return client.chat.completions.create(model="gpt-4o", messages=[{"role":"user","content":prompt}]).choices[0].message.content.strip()
-
-def summarize(story):
-    context = story.get("article_snippet","")
-    prompt = f"Provide a 6‑sentence journalistic summary of the following tech news:\n{context}"
-    return client.chat.completions.create(model="gpt-4o", messages=[{"role":"user","content":prompt}]).choices[0].message.content.strip()
+    return compiled  # list[dict]
