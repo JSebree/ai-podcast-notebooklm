@@ -1,18 +1,18 @@
-from crewai import Agent, Message
+from crewai import Agent
 from utils.twilio_utils import send_sms
 from utils.email_utils import send_email
+
 
 def get_agent():
     return Agent(
         name="NotifierAgent",
-        sys_prompt="Send SMS (and fallback email) with the Google Doc link provided.",
-        fn=run
+        description="Send SMS (and fallback email) with the Google Doc link provided.",
+        run=run
     )
 
-def run(msg: Message):
-    link = msg.content
+def run(link: str):
     try:
         send_sms(link)
-    except Exception as e:
+    except Exception:
         send_email(link)
-    return Message(content="Notifications sent")
+    return "Notifications dispatched"
