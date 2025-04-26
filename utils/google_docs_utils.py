@@ -1,4 +1,5 @@
-import os, datetime, json         # <— json already added earlier
+import os, datetime, json
+from google.oauth2 import service_account          # ← add this
 from googleapiclient.discovery import build
 
 SCOPES = [
