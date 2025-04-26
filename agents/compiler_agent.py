@@ -11,9 +11,12 @@ PROMPT_SUMMARY = "Provide a 6-sentence journalistic summary of the following tec
 def get_agent():
     return Agent(
         name="CompilerAgent",
-        description="Create a full‑paragraph summary and a 1‑line podcast title for each story.",
-        run=run
+        role="Tech Digest Writer",
+        goal="Turn enriched stories into 1-paragraph summaries and punchy podcast titles.",
+        backstory="You are a concise technical writer who distills complex topics into sharp copy.",
+        run=run,
     )
+
 
 def run(stories: list[dict]):
     compiled = []
