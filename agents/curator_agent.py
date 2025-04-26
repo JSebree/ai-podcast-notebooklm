@@ -1,6 +1,7 @@
 from crewai import Agent
 from utils.web_search_utils import fetch_top_news
 
+
 def get_agent():
     return Agent(
         name="CuratorAgent",
@@ -16,6 +17,7 @@ def get_agent():
         run=run,
     )
 
+
 def run(_=None):
-    # returns list[dict] with keys: title, url, rank
+    # Returns list[dict] with keys: title, url, rank
     return fetch_top_news(max_items=5)
