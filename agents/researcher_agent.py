@@ -1,6 +1,7 @@
 from crewai import Agent
 from utils.web_search_utils import enrich_story
 
+
 def get_agent():
     return Agent(
         name="ResearchAgent",
@@ -13,10 +14,11 @@ def get_agent():
         ),
         backstory=(
             "You are a meticulous researcher who cross-checks sources and "
-            "surfaces the most credible commentary around emerging-tech news."
+            "surfaces the most credible commentary on emerging-tech news."
         ),
         run=run,
     )
+
 
 def run(stories: list[dict]):
     """Return the enriched list of story dictionaries."""
