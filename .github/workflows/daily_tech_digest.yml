@@ -31,5 +31,5 @@ jobs:
           SMTP_PASS:               ${{ secrets.SMTP_PASS }}
           SMTP_HOST:               ${{ secrets.SMTP_HOST }}
           SMTP_PORT:               ${{ secrets.SMTP_PORT }}
-          NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}:            ${{ secrets.NOTIFY_EMAIL }}
+          NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
         run: python crewai_workflow.py
