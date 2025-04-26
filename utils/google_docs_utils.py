@@ -19,7 +19,13 @@ def create_daily_doc(stories: list[dict]) -> str:
     title = f"Emerging Tech Digest – {today}"
 
     # 1️⃣  create the Doc in the service-account's My Drive
-    doc = docs_service.documents().create(body={"title": title}).execute()
+    try:
+        doc = docs_service.documents().create(body={"title": title}).execute()
+    except Exception as err:
+        import traceback, sys
+        print("[DEBUG] Docs API error:", err, file=sys.stderr)
+        traceback.print_exc()                # full stack trace
+        raise                                 # stop the run so you see red
     doc_id = doc["documentId"]
     print("[DEBUG] Created Doc →", doc_id)
 
