@@ -49,6 +49,12 @@ notify_task = Task(
     expected_output="String confirmation that notifications were dispatched.",
 )
 
-# --- run the crew ---
+# ── run the crew ────────────────────────────────────────────
 if __name__ == "__main__":
-    Crew(tasks=[notify_task]).run()
+    crew = Crew(tasks=[notify_task])
+
+    # Try the modern method first; fall back if needed
+    if hasattr(crew, "kickoff"):
+        crew.kickoff()
+    else:
+        crew.execute()
