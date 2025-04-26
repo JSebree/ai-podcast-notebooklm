@@ -6,9 +6,12 @@ from utils.email_utils import send_email
 def get_agent():
     return Agent(
         name="NotifierAgent",
-        description="Send SMS (and fallback email) with the Google Doc link provided.",
-        run=run
+        role="Notification Dispatcher",
+        goal="Alert the user via SMS and email with the daily digest link.",
+        backstory="You ensure timely delivery of daily tech updates.",
+        run=run,
     )
+
 
 def run(link: str):
     try:
