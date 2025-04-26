@@ -1,25 +1,25 @@
-from crewai import Agent, Task, Crew, Message
-import agents.curator_agent as curator
-import agents.researcher_agent as researcher
-import agents.compiler_agent as compiler
-import agents.doc_creator_agent as doc_creator
-import agents.notifier_agent as notifier
+from crewai import Agent, Task, Crew
 
-# 1️⃣ Define agents
-curator_agent   = curator.get_agent()
-research_agent  = researcher.get_agent()
-compiler_agent  = compiler.get_agent()
-doc_agent       = doc_creator.get_agent()
-notifier_agent  = notifier.get_agent()
+# ——— import factory functions for each agent ———
+from agents.curator_agent import get_agent as curator
+from agents.researcher_agent import get_agent as researcher
+from agents.compiler_agent import get_agent as compiler
+from agents.doc_creator_agent import get_agent as doc_creator
+from agents.notifier_agent import get_agent as notifier
 
-# 2️⃣ Define tasks (each returns a Message)
-curate_task   = Task(agent=curator_agent,   name="curate")
-research_task = Task(agent=research_agent,  name="research",   depends_on=curate_task)
-compile_task  = Task(agent=compiler_agent,  name="compile",    depends_on=research_task)
-doc_task      = Task(agent=doc_agent,       name="gdoc",       depends_on=compile_task)
-notify_task   = Task(agent=notifier_agent,  name="notify",     depends_on=doc_task)
+# instantiate agents
+curator_agent   = curator()
+research_agent  = researcher()
+compiler_agent  = compiler()
+doc_agent       = doc_creator()
+notifier_agent  = notifier()
 
-# 3️⃣ Run crew
+# define tasks (data passed as plain Python objects between them)
+curate_task   = Task(agent=curator_agent)                      # returns list[dict]
+research_task = Task(agent=research_agent,  depends_on=curate_task)   # returns enriched list
+compile_task  = Task(agent=compiler_agent,  depends_on=research_task)  # returns compiled list
+create_doc    = Task(agent=doc_agent,       depends_on=compile_task)   # returns str (Doc URL)
+notify_task   = Task(agent=notifier_agent,  depends_on=create_doc)     # final step
+
 if __name__ == "__main__":
-    crew = Crew(tasks=[notify_task])
-    crew.run()
+    Crew(tasks=[notify_task]).run()
