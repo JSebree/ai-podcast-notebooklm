@@ -3,7 +3,8 @@ from openai import OpenAI
 client = OpenAI()
 
 PROMPT_TITLE = "Write a punchy podcast episode title (under 12 words) summarizing: "
-PROMPT_SUMMARY = "Provide a 6-sentence journalistic summary of the following tech news:
+PROMPT_SUMMARY = "Provide a 6‑sentence journalistic summary of the following tech news:
+"
 "
 
 def get_agent():
