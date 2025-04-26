@@ -21,6 +21,7 @@ def create_daily_doc(stories: list[dict]) -> str:
     # 1️⃣  create the Doc in the service-account's My Drive
     doc = docs_service.documents().create(body={"title": title}).execute()
     doc_id = doc["documentId"]
+    print("[DEBUG] Created Doc →", doc_id)
 
     # 2️⃣  move it into the user-defined folder
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
@@ -36,6 +37,7 @@ def create_daily_doc(stories: list[dict]) -> str:
             removeParents=previous_parents,
             fields="id, parents",
         ).execute()
+        print("[DEBUG] Moved Doc; new parents →", res.get("parents"))
 
     # … (continue with your batchUpdate text insertion) …
     return f"https://docs.google.com/document/d/{doc_id}"
