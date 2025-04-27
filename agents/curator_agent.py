@@ -11,15 +11,15 @@ def get_agent():
         role="News Curator",
         # ▶ Focus only on AI, quantum computing, or robotics stories
         goal=(
-            "In the last 24 hours, find breaking news articles **strictly**
-            "about artificial intelligence, quantum computing, or robotics.
-            "Use only reputable tech publications (e.g. MIT Technology Review,
-            "IEEE Spectrum, Wired, Science, Nature). Rank by impact and
+            "In the last 24 hours, find breaking news articles **strictly** "
+            "about artificial intelligence, quantum computing, or robotics."
+            "Use only reputable tech publications (e.g. MIT Technology Review, "
+            "IEEE Spectrum, Wired, Science, Nature). Rank by impact and "
             "novelty, and return the **top 5** stories."
         ),
         backstory=(
-            "You are a veteran tech journalist who never strays outside the
-            "fields of AI, quantum computing, and robotics, and only trusts
+            "You are a veteran tech journalist who never strays outside the "
+            "fields of AI, quantum computing, and robotics, and only trusts "
             "well–known outlets."
         ),
         run=run,
