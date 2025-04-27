@@ -20,8 +20,8 @@ def get_agent():
             "Reject any link that is off-topic or from unknown sources."
         ),
         backstory=(
-            "You’re a meticulous researcher who cross-checks and filters
-            "out anything not strictly on AI, quantum computing, or
+            "You’re a meticulous researcher who cross-checks and filters "
+            "out anything not strictly on AI, quantum computing, or "
             "robotics from top publications, social, and video."
         ),
         run=run,
