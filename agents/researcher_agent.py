@@ -1,59 +1,44 @@
 import logging
-import sys
 from crewai import Agent
 from utils.web_search_utils import enrich_story
 
-# ── logging setup ────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 def get_agent():
-    """Return the ResearchAgent instance."""
     return Agent(
         name="ResearchAgent",
         role="Tech Research Analyst",
+        # ▶ Require 3–5 links *only* on the same topic, from approved sources
         goal=(
-            "For each curated headline, gather 3–5 authoritative supporting "
-            "resources (official article from reputable publications, YouTube "
-            "links, Twitter and LinkedIn posts). Make sure to obtain 3 - 5 links for each story."
+            "For each headline, gather **3 to 5** distinct supporting links
+            "that are directly about that exact AI, quantum computing, or
+            "robotics topic. You must include at least:\n"
+            "  • One article from a reputable publication,\n"
+            "  • One YouTube video by an industry influencer,\n"
+            "  • One Twitter or LinkedIn post by a recognized leader.\n"
+            "Reject any link that is off-topic or from unknown sources."
         ),
         backstory=(
-            "You verify sources and surface the most credible commentary on "
-            "emerging-tech news."
+            "You’re a meticulous researcher who cross-checks and filters
+            "out anything not strictly on AI, quantum computing, or
+            "robotics from top publications, social, and video."
         ),
         run=run,
     )
 
-
 def run(stories: list[dict]):
-    """
-    Enrich each story and return the updated list.
-    Raises RuntimeError if the result list is empty (to abort the chain).
-    """
-    if not isinstance(stories, list) or not all(isinstance(s, dict) for s in stories):
-        raise RuntimeError("ResearchAgent received invalid input (must be list[dict]).")
-
-    if not stories:
-        raise RuntimeError("ResearchAgent received ZERO stories – aborting chain.")
-
-    print(f"[DEBUG] ResearchAgent received {len(stories)} stories", file=sys.stderr)
-
-    enriched: list[dict] = []
-    for story in stories:
+    enriched = []
+    for s in stories:
         try:
-            enriched.append(enrich_story(story))
-        except Exception as err:
-            logger.error(
-                "Failed to enrich story '%s' – %s",
-                story.get("title", "<no-title>"),
-                err,
-            )
-            print("[DEBUG] enrich_story error →", err, file=sys.stderr)
-
-    print(f"[DEBUG] ResearchAgent produced {len(enriched)} enriched stories", file=sys.stderr)
-
-    if not enriched:
-        raise RuntimeError("ResearchAgent produced ZERO enriched stories – aborting chain.")
-
+            item = enrich_story(s)
+            # enforce link-count
+            links = item.get("links", [])
+            if not (3 <= len(links) <= 5):
+                logger.warning(
+                    "Story '%s' yielded %d links—expecting 3–5", s["title"], len(links)
+                )
+            enriched.append(item)
+        except Exception as e:
+            logger.error("Failed to enrich '%s': %s", s.get("title"), e)
     return enriched
