@@ -2,7 +2,8 @@ name: Daily Tech Digest
 
 on:
   schedule:
-    - cron: "0 12 * * *"   # 8 AM ET
+    # 8 AM Eastern → 12:00 UTC
+    - cron:  '0 12 * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -10,52 +11,113 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+    - name: 🛎️ Checkout repository
+      uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    - name: 🐍 Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
 
-      # 🔐 Secret validation (unchanged) …
-      # --------------- SNIP  ---------------
+    - name: 🔐 Validate required secrets
+      env:
+        GOOGLE_SERVICE_ACCOUNT:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+        GOOGLE_DRIVE_FOLDER_ID:  ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        SHARE_WITH_EMAIL:        ${{ secrets.SHARE_WITH_EMAIL }}
+        NEWSDATA_API_KEY:        ${{ secrets.NEWSDATA_API_KEY }}
+        YOUTUBE_API_KEY:         ${{ secrets.YOUTUBE_API_KEY }}
+        OPENAI_API_KEY:          ${{ secrets.OPENAI_API_KEY }}
+        TWITTER_BEARER_TOKEN:    ${{ secrets.TWITTER_BEARER_TOKEN }}
+        TWILIO_ACCOUNT_SID:      ${{ secrets.TWILIO_ACCOUNT_SID }}
+        TWILIO_AUTH_TOKEN:       ${{ secrets.TWILIO_AUTH_TOKEN }}
+        TWILIO_FROM_NUMBER:      ${{ secrets.TWILIO_FROM_NUMBER }}
+        NOTIFY_PHONE:            ${{ secrets.NOTIFY_PHONE }}
+        SMTP_USER:               ${{ secrets.SMTP_USER }}
+        SMTP_PASS:               ${{ secrets.SMTP_PASS }}
+        SMTP_HOST:               ${{ secrets.SMTP_HOST }}
+        SMTP_PORT:               ${{ secrets.SMTP_PORT }}
+        NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
+      run: |
+        set -e
+        missing=0
+        for var in \
+          GOOGLE_SERVICE_ACCOUNT GOOGLE_DRIVE_FOLDER_ID SHARE_WITH_EMAIL \
+          NEWSDATA_API_KEY YOUTUBE_API_KEY OPENAI_API_KEY TWITTER_BEARER_TOKEN \
+          TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM_NUMBER NOTIFY_PHONE \
+          SMTP_USER SMTP_PASS SMTP_HOST SMTP_PORT NOTIFY_EMAIL
+        do
+          if [ -z "${!var}" ]; then
+            echo "❌ Secret $var is missing" >&2
+            missing=1
+          else
+            echo "✅ Secret $var present"
+          fi
+        done
+        [ "$missing" -eq 0 ] || { echo "Aborting—one or more secrets missing." >&2; exit 1; }
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+    - name: 📦 Install dependencies
+      run: pip install -r requirements.txt
 
-      - name: 🩺 Smoke-test Newsdata
-        env:
-          NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
-        run: |
-          echo "Key prefix: ${NEWSDATA_API_KEY:0:6}"
-          response="$(curl --silent --show-error --get https://newsdata.io/api/1/news \
-                     --data apikey=${NEWSDATA_API_KEY} \
-                     --data language=en \
-                     --data q="technology" \
-                     --write-out '\nHTTP_STATUS:%{http_code}')"
-          body="${response%HTTP_STATUS*}"
-          status="${response##*HTTP_STATUS:}"
-          echo "HTTP status: $status"
-          echo "$body" | head -c 300
-          [ "$status" -eq 200 ] || { echo "Newsdata smoke-test failed"; exit 1; }
+    - name: 🩺 Smoke-test Newsdata API
+      env:
+        NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
+      run: |
+        echo "Key prefix: ${NEWSDATA_API_KEY:0:6}"
+        curl --silent --show-error --get https://newsdata.io/api/1/news \
+          --data apikey=${NEWSDATA_API_KEY} \
+          --data language=en \
+          --data q="technology" \
+          --write-out '\nHTTP_STATUS:%{http_code}' \
+        | tee /tmp/newsdata_resp.txt
+        status=$(tail -n1 /tmp/newsdata_resp.txt | sed 's/HTTP_STATUS://')
+        echo "HTTP status: $status"
+        grep -q '"status":"success"' /tmp/newsdata_resp.txt || { echo "❌ Newsdata smoke-test failed"; exit 1; }
 
-      - name: 🚀 Run CrewAI workflow
-        env:
-          GOOGLE_SERVICE_ACCOUNT:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-          GOOGLE_DRIVE_FOLDER_ID:  ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
-          NEWSDATA_API_KEY:        ${{ secrets.NEWSDATA_API_KEY }}
-          YOUTUBE_API_KEY:         ${{ secrets.YOUTUBE_API_KEY }}
-          OPENAI_API_KEY:          ${{ secrets.OPENAI_API_KEY }}
-          TWITTER_BEARER_TOKEN:    ${{ secrets.TWITTER_BEARER_TOKEN }}
-          TWILIO_ACCOUNT_SID:      ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN:       ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_FROM_NUMBER:      ${{ secrets.TWILIO_FROM_NUMBER }}
-          NOTIFY_PHONE:            ${{ secrets.NOTIFY_PHONE }}
-          SMTP_USER:               ${{ secrets.SMTP_USER }}
-          SMTP_PASS:               ${{ secrets.SMTP_PASS }}
-          SMTP_HOST:               ${{ secrets.SMTP_HOST }}
-          SMTP_PORT:               ${{ secrets.SMTP_PORT }}
-          NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
-          SHARE_WITH_EMAIL:        ${{ secrets.SHARE_WITH_EMAIL }}
-        run: |
-          set -e
-          python crewai_workflow.py
+    - name: 📄 Smoke-test DocCreator alone
+      env:
+        GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+        GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        SHARE_WITH_EMAIL:       ${{ secrets.SHARE_WITH_EMAIL }}
+      run: |
+        python - <<'PY'
+        import sys, logging
+        from utils.google_docs_utils import create_daily_doc
+
+        logging.basicConfig(level=logging.DEBUG)
+        # dummy story data
+        dummy = [{
+            "headline": "Smoke Test",
+            "date": "1970-01-01",
+            "summary": "Testing DocCreator alone.",
+            "podcast_title": "Smoke Podcast",
+            "links": []
+        }]
+        try:
+            url = create_daily_doc(dummy)
+            print("[SMOKE] create_daily_doc returned:", url, file=sys.stderr)
+        except Exception as e:
+            print("[SMOKE] create_daily_doc threw:", type(e).__name__, e, file=sys.stderr)
+            sys.exit(1)
+        PY
+
+    - name: 🚀 Run full CrewAI workflow
+      env:
+        GOOGLE_SERVICE_ACCOUNT:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+        GOOGLE_DRIVE_FOLDER_ID:  ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+        SHARE_WITH_EMAIL:        ${{ secrets.SHARE_WITH_EMAIL }}
+        NEWSDATA_API_KEY:        ${{ secrets.NEWSDATA_API_KEY }}
+        YOUTUBE_API_KEY:         ${{ secrets.YOUTUBE_API_KEY }}
+        OPENAI_API_KEY:          ${{ secrets.OPENAI_API_KEY }}
+        TWITTER_BEARER_TOKEN:    ${{ secrets.TWITTER_BEARER_TOKEN }}
+        TWILIO_ACCOUNT_SID:      ${{ secrets.TWILIO_ACCOUNT_SID }}
+        TWILIO_AUTH_TOKEN:       ${{ secrets.TWILIO_AUTH_TOKEN }}
+        TWILIO_FROM_NUMBER:      ${{ secrets.TWILIO_FROM_NUMBER }}
+        NOTIFY_PHONE:            ${{ secrets.NOTIFY_PHONE }}
+        SMTP_USER:               ${{ secrets.SMTP_USER }}
+        SMTP_PASS:               ${{ secrets.SMTP_PASS }}
+        SMTP_HOST:               ${{ secrets.SMTP_HOST }}
+        SMTP_PORT:               ${{ secrets.SMTP_PORT }}
+        NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
+      run: |
+        set -e
+        python crewai_workflow.py
