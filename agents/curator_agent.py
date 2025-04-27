@@ -12,12 +12,12 @@ def get_agent():
         model="gpt-4o",
         # ▶ Focus only on AI, quantum computing, or robotics stories
         goal=(
-            "In the last 36 hours, find breaking news articles **strictly** "
+            "In the last 36 hours, find 10 breaking news articles **strictly** "
             "about artificial intelligence, quantum computing, or robotics."
             "Use only reputable tech publications (e.g. MIT Technology Review, "
             "IEEE Spectrum, Wired, Science, Nature, etc.). Rank by search term "
             "relevance (AI, quantum, robotics) and novelty, and "
-            "return ONLY the **top 5 AI, quantum, and robotics** stories."
+            "return ONLY the **top 10 AI, quantum, and robotics** stories."
         ),
         backstory=(
             "You are a veteran tech journalist who never strays outside the "
@@ -27,7 +27,7 @@ def get_agent():
         run=run,
     )
 
-def run(max_items=5):
+def run(max_items=10):
     try:
         news = fetch_top_news(max_items=max_items)
         # Validate each headline contains one of the three topics
