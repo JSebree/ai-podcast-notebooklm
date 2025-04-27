@@ -1,5 +1,5 @@
 import logging, sys
-from crewai import Agent, Task, Crew
+from crewai import Task, Crew
 from agents.curator_agent import get_agent as curator
 from agents.researcher_agent import get_agent as researcher
 from agents.compiler_agent import get_agent as compiler
@@ -17,6 +17,10 @@ research_agent  = researcher()
 compiler_agent  = compiler()
 doc_agent       = doc_creator()
 notifier_agent  = notifier()
+
+# helper to get a readable agent name without crashing
+def agent_name(agent):
+    return getattr(getattr(agent, "profile", None), "name", repr(agent))
 
 # ── define tasks ───────────────────────────────────────────────
 def define_tasks():
@@ -54,20 +58,17 @@ def define_tasks():
         expected_output="confirmation str",
     )
 
-    # ▶ return **all** tasks so CrewAI executes the full chain
     all_tasks = [curate_task, research_task, compile_task, doc_task, notify_task]
-    print("[DEBUG] Crew tasks scheduled:", [t.agent.name for t in all_tasks], file=sys.stderr)
+    print("[DEBUG] Crew tasks scheduled:", [agent_name(t.agent) for t in all_tasks], file=sys.stderr)
     return all_tasks
 
 # ── run the crew ───────────────────────────────────────────────
 if __name__ == "__main__":
     crew = Crew(tasks=define_tasks())
-
-    # kickoff() for latest CrewAI, fallback to execute()
     run_fn = crew.kickoff if hasattr(crew, "kickoff") else crew.execute
     result = run_fn()
 
-    # 🔴 fail build if no Google-Docs URL produced
+    # fail build if no Google-Docs URL produced
     if not result or "docs.google.com/document" not in str(result):
         raise RuntimeError("❌  No Google Doc URL produced – aborting build.")
 
