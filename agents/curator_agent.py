@@ -3,7 +3,6 @@ import sys
 from crewai import Agent
 from utils.web_search_utils import fetch_top_news
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,28 +24,27 @@ def get_agent():
     )
 
 
-# CrewAI passes the previous task’s output into run().  We accept it via `_`.
 def run(_=None, max_items: int = 5):
     """
     Fetch and validate the top news stories.
 
-    :param _ : Ignored (dependency input from CrewAI chain).
+    :param _ : (ignored) dependency input from CrewAI chain.
     :param max_items: Number of stories to fetch.
-    :return: List of story dicts or an empty list on failure.
+    :return: List of story dicts.
+    :raises RuntimeError: if zero stories are fetched.
     """
-    try:
-        stories = fetch_top_news(max_items=max_items)
-        if not isinstance(stories, list):
-            raise ValueError("fetch_top_news() returned non-list")
+    stories = fetch_top_news(max_items=max_items)
 
-        for item in stories:
-            if not isinstance(item, dict) or not all(k in item for k in ("title", "url", "rank")):
-                raise ValueError(f"Invalid news item format: {item}")
+    # ── validate structure ─────────────────────────────
+    if not isinstance(stories, list):
+        raise RuntimeError("fetch_top_news() returned non-list object")
 
-        print(f"[DEBUG] CuratorAgent fetched {len(stories)} stories", file=sys.stderr)
-        return stories
+    if not stories:
+        raise RuntimeError("CuratorAgent fetched ZERO stories – aborting chain.")
 
-    except Exception as err:
-        logger.error("CuratorAgent failed to fetch/validate news: %s", err)
-        print("[DEBUG] CuratorAgent error →", err, file=sys.stderr)
-        return []
+    for item in stories:
+        if not isinstance(item, dict) or not all(k in item for k in ("title", "url", "rank")):
+            raise RuntimeError(f"Invalid news item format: {item}")
+
+    print(f"[DEBUG] CuratorAgent fetched {len(stories)} stories", file=sys.stderr)
+    return stories
