@@ -9,6 +9,7 @@ def get_agent():
     return Agent(
         name="CuratorAgent",
         role="News Curator",
+        model="gpt-4o",
         # ▶ Focus only on AI, quantum computing, or robotics stories
         goal=(
             "In the last 36 hours, find breaking news articles **strictly** "
