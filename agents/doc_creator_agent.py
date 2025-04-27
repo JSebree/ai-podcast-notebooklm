@@ -1,17 +1,13 @@
-import logging
+import logging, sys
 from crewai import Agent
 from utils.google_docs_utils import create_daily_doc
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_agent():
-    """
-    Create and return an instance of the DocCreatorAgent.
 
-    :return: An Agent instance configured for creating Google Docs.
-    """
+def get_agent():
+    """Return the DocCreatorAgent instance."""
     return Agent(
         name="DocCreatorAgent",
         role="Google Docs Publisher",
@@ -20,26 +16,29 @@ def get_agent():
         run=run,
     )
 
+
 def run(compiled: list[dict]):
     """
-    Generate a daily digest document in Google Drive.
-
-    :param compiled: A list of dictionaries containing the content for the document.
-    :return: The URL of the created document, or None if an error occurs.
+    Create the Google Doc and return its link.
+    Raises RuntimeError if no valid URL is produced.
     """
-    if not isinstance(compiled, list) or not all(isinstance(item, dict) for item in compiled):
-        logger.error("Invalid input: 'compiled' must be a list of dictionaries.")
-        return None
+    if not isinstance(compiled, list) or not all(isinstance(c, dict) for c in compiled):
+        raise RuntimeError("DocCreatorAgent received invalid 'compiled' input (must be list[dict]).")
 
     if not compiled:
-        logger.warning("The 'compiled' list is empty. No document will be created.")
-        return None
+        raise RuntimeError("DocCreatorAgent received EMPTY compiled list – aborting chain.")
+
+    print("[DEBUG] DocCreatorAgent entered, len =", len(compiled), file=sys.stderr)
 
     try:
-        logger.debug("DocCreatorAgent entered, len = %d", len(compiled))
         url = create_daily_doc(compiled)
-        logger.debug("DocCreatorAgent returned URL: %s", url)
-        return url
-    except Exception as e:
-        logger.error("Failed to create daily document: %s", e)
-        return None
+        print("[DEBUG] DocCreatorAgent got URL:", url, file=sys.stderr)
+    except Exception as err:
+        logger.error("Failed to create daily document: %s", err)
+        print("[DEBUG] create_daily_doc error →", err, file=sys.stderr)
+        raise  # propagate so GitHub step goes red
+
+    if "docs.google.com/document" not in str(url):
+        raise RuntimeError("DocCreatorAgent did NOT receive a Google-Docs URL!")
+
+    return url
