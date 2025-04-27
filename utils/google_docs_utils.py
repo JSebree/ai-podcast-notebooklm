@@ -2,37 +2,50 @@ import os, base64, json, datetime, re, sys, logging
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-# ── logging setup ──────────────────────────────────────────────
+# ── logging setup ─────────────────────────────────────────────
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+def _debug(*msg):
+    print("[DEBUG]", *msg, file=sys.stderr)
 
 SCOPES = [
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive",
 ]
 
-# ── load + decode service-account creds ────────────────────────
-sa_b64 = os.getenv("GOOGLE_SERVICE_ACCOUNT")
-if not sa_b64:
-    raise EnvironmentError("GOOGLE_SERVICE_ACCOUNT env var is empty.")
+# ── load service-account creds (raw JSON or base-64) ───────────
+sa_env = os.getenv("GOOGLE_SERVICE_ACCOUNT")
+if not sa_env:
+    raise EnvironmentError("GOOGLE_SERVICE_ACCOUNT secret is empty.")
 
+sa_info: dict | None = None
+# Attempt base-64 decode first
 try:
-    sa_info = json.loads(base64.b64decode(sa_b64).decode("utf-8"))
-except (base64.binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as err:
-    raise ValueError("GOOGLE_SERVICE_ACCOUNT secret must be base64-encoded JSON") from err
+    decoded = base64.b64decode(sa_env).decode("utf-8")
+    if decoded.lstrip().startswith("{"):
+        sa_info = json.loads(decoded)
+        _debug("Service-account secret detected as base-64 JSON.")
+except (base64.binascii.Error, UnicodeDecodeError, json.JSONDecodeError):
+    pass
+
+# Fallback: assume raw JSON
+if sa_info is None:
+    try:
+        sa_info = json.loads(sa_env)
+        _debug("Service-account secret detected as raw JSON.")
+    except json.JSONDecodeError as err:
+        raise ValueError(
+            "GOOGLE_SERVICE_ACCOUNT secret is neither base-64 nor valid JSON."
+        ) from err
 
 creds = service_account.Credentials.from_service_account_info(sa_info, scopes=SCOPES)
-
 docs_service  = build("docs",  "v1", credentials=creds, cache_discovery=False)
 drive_service = build("drive", "v3", credentials=creds, cache_discovery=False)
 
-# ── helper ─────────────────────────────────────────────────────
-def _debug(msg, *vals):
-    print("[DEBUG]", msg, *vals, file=sys.stderr)
-
-# ── main function ──────────────────────────────────────────────
+# ── main helper ───────────────────────────────────────────────
 def create_daily_doc(stories: list[dict]) -> str:
-    """Create the Google Doc, move it, share it, and return its URL."""
+    """Create the Google Doc, move it to the folder, share it, and return its URL."""
     today = datetime.datetime.now().strftime("%B %d, %Y")
     title = f"Emerging Tech Digest – {today}"
 
@@ -42,7 +55,7 @@ def create_daily_doc(stories: list[dict]) -> str:
     doc_id = doc["documentId"]
     _debug("Created Doc →", doc_id)
 
-    # 2️⃣  move into folder
+    # 2️⃣  move into folder (if provided)
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     if folder_id:
         _debug("Moving Doc into folder:", folder_id)
@@ -72,5 +85,5 @@ def create_daily_doc(stories: list[dict]) -> str:
         ).execute()
         _debug("Shared Doc with", share_email)
 
-    # 4️⃣  return link
+    # 4️⃣ return link
     return f"https://docs.google.com/document/d/{doc_id}"
