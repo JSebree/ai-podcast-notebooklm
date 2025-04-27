@@ -1,88 +1,56 @@
-import os
-import logging
-import sys
+import logging, sys
 from crewai import Agent
-from openai import OpenAI
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Load API key and validate
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise EnvironmentError("Environment variable 'OPENAI_API_KEY' is not set.")
-client = OpenAI(api_key=api_key)
-
-# Model configuration
-MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o")
-
-PROMPT_TITLE = "Write a punchy podcast episode title (under 12 words) summarizing: "
-PROMPT_SUMMARY = "Provide a 6-sentence journalistic summary of the following tech news:\n"
 
 def get_agent():
     return Agent(
         name="CompilerAgent",
         role="Tech Digest Writer",
         goal=(
-            "Turn enriched stories into a one-paragraph summary and a catchy "
-            "podcast title for each item."
+            "Turn enriched stories into a structured list of dicts, each with "
+            "headline, date, summary, podcast title, and supporting links."
         ),
         backstory=(
-            "You distill complex technical developments into clear, engaging "
-            "copy that busy audiences can grasp quickly."
+            "You distill complex technical developments into clear, engaging copy "
+            "that busy audiences can grasp quickly."
         ),
         run=run,
     )
 
 def run(stories: list[dict]):
-    print("[DEBUG] CompilerAgent received", len(stories), "stories", file=sys.stderr)
+    """
+    :param stories: Enriched stories from ResearchAgent.
+    :return: A list of dicts, one per story.
+    """
+    # 1️⃣  Validate input
+    if not isinstance(stories, list):
+        raise RuntimeError("CompilerAgent expected a list, got %r" % type(stories))
     if not stories:
-        logger.warning("No stories provided to the `run` function.")
-        return []
+        raise RuntimeError("CompilerAgent received ZERO stories – aborting.")
+
+    print(f"[DEBUG] CompilerAgent received {len(stories)} stories", file=sys.stderr)
 
     compiled = []
+    for item in stories:
+        # you may need to adjust these keys to match your enrich_story output
+        title   = item.get("title", "Untitled")
+        date    = item.get("date", "")
+        summary = item.get("article_snippet") or item.get("summary", "")
+        links   = item.get("links", [])
 
-    for story in stories:
-        if not isinstance(story, dict):
-            logger.error(f"Invalid story format: {story}")
-            continue
+        # generate a one-line podcast episode title
+        podcast_title = f"{title} – Quick Tech Dive"
 
-        if "title" not in story or "links" not in story:
-            logger.error(f"Missing required keys in story: {story}")
-            continue
+        compiled.append({
+            "headline": title,
+            "date":      date,
+            "summary":   summary,
+            "podcast_title": podcast_title,
+            "links":     links,
+        })
 
-        try:
-            # --- generate podcast title ---
-            title_prompt = PROMPT_TITLE + story["title"]
-            podcast_title = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "user", "content": title_prompt}],
-            ).choices[0].message.content.strip()
-        except Exception as e:
-            logger.error(f"Error generating podcast title for story '{story['title']}': {e}")
-            podcast_title = "Error generating title"
-
-        try:
-            # --- generate summary ---
-            context = story.get("article_snippet") or story["title"]
-            summary_prompt = PROMPT_SUMMARY + context
-            summary = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "user", "content": summary_prompt}],
-            ).choices[0].message.content.strip()
-        except Exception as e:
-            logger.error(f"Error generating summary for story '{story['title']}': {e}")
-            summary = "Error generating summary"
-
-        compiled.append(
-            {
-                "headline": story["title"],
-                "podcast_title": podcast_title,
-                "summary": summary,
-                "links": story["links"],
-            }
-        )
-        print("[DEBUG] CompilerAgent produced", len(compiled), "items", file=sys.stderr)
-
+    print(f"[DEBUG] CompilerAgent produced {len(compiled)} compiled items", file=sys.stderr)
     return compiled
