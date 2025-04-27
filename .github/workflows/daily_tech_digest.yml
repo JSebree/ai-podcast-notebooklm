@@ -28,15 +28,6 @@ jobs:
         YOUTUBE_API_KEY:         ${{ secrets.YOUTUBE_API_KEY }}
         OPENAI_API_KEY:          ${{ secrets.OPENAI_API_KEY }}
         TWITTER_BEARER_TOKEN:    ${{ secrets.TWITTER_BEARER_TOKEN }}
-        TWILIO_ACCOUNT_SID:      ${{ secrets.TWILIO_ACCOUNT_SID }}
-        TWILIO_AUTH_TOKEN:       ${{ secrets.TWILIO_AUTH_TOKEN }}
-        TWILIO_FROM_NUMBER:      ${{ secrets.TWILIO_FROM_NUMBER }}
-        NOTIFY_PHONE:            ${{ secrets.NOTIFY_PHONE }}
-        SMTP_USER:               ${{ secrets.SMTP_USER }}
-        SMTP_PASS:               ${{ secrets.SMTP_PASS }}
-        SMTP_HOST:               ${{ secrets.SMTP_HOST }}
-        SMTP_PORT:               ${{ secrets.SMTP_PORT }}
-        NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
       run: |
         set -e
         missing=0
@@ -109,15 +100,6 @@ jobs:
         YOUTUBE_API_KEY:         ${{ secrets.YOUTUBE_API_KEY }}
         OPENAI_API_KEY:          ${{ secrets.OPENAI_API_KEY }}
         TWITTER_BEARER_TOKEN:    ${{ secrets.TWITTER_BEARER_TOKEN }}
-        TWILIO_ACCOUNT_SID:      ${{ secrets.TWILIO_ACCOUNT_SID }}
-        TWILIO_AUTH_TOKEN:       ${{ secrets.TWILIO_AUTH_TOKEN }}
-        TWILIO_FROM_NUMBER:      ${{ secrets.TWILIO_FROM_NUMBER }}
-        NOTIFY_PHONE:            ${{ secrets.NOTIFY_PHONE }}
-        SMTP_USER:               ${{ secrets.SMTP_USER }}
-        SMTP_PASS:               ${{ secrets.SMTP_PASS }}
-        SMTP_HOST:               ${{ secrets.SMTP_HOST }}
-        SMTP_PORT:               ${{ secrets.SMTP_PORT }}
-        NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
       run: |
         set -e
         python crewai_workflow.py
