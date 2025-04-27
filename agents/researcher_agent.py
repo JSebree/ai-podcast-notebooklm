@@ -1,8 +1,17 @@
+import logging
 from crewai import Agent
 from utils.web_search_utils import enrich_story
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_agent():
+    """
+    Create and return an instance of the ResearchAgent.
+
+    :return: An Agent instance configured for researching and enriching stories.
+    """
     return Agent(
         name="ResearchAgent",
         role="Tech Research Analyst",
@@ -19,7 +28,26 @@ def get_agent():
         run=run,
     )
 
-
 def run(stories: list[dict]):
-    """Return the enriched list of story dictionaries."""
-    return [enrich_story(s) for s in stories]
+    """
+    Return the enriched list of story dictionaries.
+
+    :param stories: A list of dictionaries, each representing a story to be enriched.
+    :return: A list of enriched story dictionaries.
+    """
+    if not isinstance(stories, list) or not all(isinstance(s, dict) for s in stories):
+        logger.error("Invalid input: 'stories' must be a list of dictionaries.")
+        return []
+
+    if not stories:
+        logger.warning("The 'stories' list is empty. No enrichment will be performed.")
+        return []
+
+    enriched_stories = []
+    for story in stories:
+        try:
+            enriched_story = enrich_story(story)
+            enriched_stories.append(enriched_story)
+        except Exception as e:
+            logger.error(f"Failed to enrich story {story.get('title
+
