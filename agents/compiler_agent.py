@@ -14,6 +14,8 @@ def get_agent():
         goal=(
             "Turn enriched stories into a structured list of dicts, each with "
             "headline, date, summary, podcast title, and supporting links."
+            "**Ensure that each story has 3 - 5 supporting links included."
+            "Be sure that the story is about AI, quantum computing, and/or robotics."
         ),
         backstory=(
             "You distill complex technical developments into clear, engaging copy "
