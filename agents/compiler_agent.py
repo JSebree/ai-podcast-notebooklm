@@ -1,11 +1,13 @@
-import logging, sys
+import logging
+import sys
 from crewai import Agent
 
-# Configure logging
+# ── logging setup ───────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def get_agent():
+    """Return the CompilerAgent instance."""
     return Agent(
         name="CompilerAgent",
         role="Tech Digest Writer",
@@ -24,32 +26,33 @@ def run(stories: list[dict]):
     """
     :param stories: Enriched stories from ResearchAgent.
     :return: A list of dicts, one per story.
+    :raises RuntimeError: if input is invalid or empty.
     """
-    # 1️⃣  Validate input
+    # 1️⃣  Validate input type & non-emptiness
     if not isinstance(stories, list):
-        raise RuntimeError("CompilerAgent expected a list, got %r" % type(stories))
+        raise RuntimeError(f"CompilerAgent expected list[dict], got {type(stories)}")
     if not stories:
         raise RuntimeError("CompilerAgent received ZERO stories – aborting.")
 
     print(f"[DEBUG] CompilerAgent received {len(stories)} stories", file=sys.stderr)
 
-    compiled = []
+    compiled: list[dict] = []
     for item in stories:
-        # you may need to adjust these keys to match your enrich_story output
+        # Extract fields from the enriched story
         title   = item.get("title", "Untitled")
         date    = item.get("date", "")
-        summary = item.get("article_snippet") or item.get("summary", "")
+        summary = item.get("article_snippet", "")
         links   = item.get("links", [])
 
-        # generate a one-line podcast episode title
+        # Create a concise podcast title
         podcast_title = f"{title} – Quick Tech Dive"
 
         compiled.append({
-            "headline": title,
-            "date":      date,
-            "summary":   summary,
+            "headline":      title,
+            "date":          date,
+            "summary":       summary,
             "podcast_title": podcast_title,
-            "links":     links,
+            "links":         links,
         })
 
     print(f"[DEBUG] CompilerAgent produced {len(compiled)} compiled items", file=sys.stderr)
