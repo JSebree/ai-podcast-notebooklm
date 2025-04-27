@@ -65,4 +65,3 @@ def create_daily_doc(stories: list[dict]) -> str:
     if share_email:
         if not re.match(r"[^@]+@[^@]+\.[^@]+", share_email):
             raise
-
