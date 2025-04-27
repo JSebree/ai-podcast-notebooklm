@@ -3,7 +3,7 @@ name: Daily Tech Digest
 on:
   schedule:
     # 8 AM Eastern → 12:00 UTC
-    - cron:  '0 12 * * *'
+    - cron: '0 12 * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -63,15 +63,16 @@ jobs:
         NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
       run: |
         echo "Key prefix: ${NEWSDATA_API_KEY:0:6}"
-        curl --silent --show-error --get https://newsdata.io/api/1/news \
+        response="$(curl --silent --show-error --get https://newsdata.io/api/1/news \
           --data apikey=${NEWSDATA_API_KEY} \
           --data language=en \
           --data q="technology" \
-          --write-out '\nHTTP_STATUS:%{http_code}' \
-        | tee /tmp/newsdata_resp.txt
-        status=$(tail -n1 /tmp/newsdata_resp.txt | sed 's/HTTP_STATUS://')
+          --write-out '\nHTTP_STATUS:%{http_code}')"
+        body="${response%HTTP_STATUS*}"
+        status="${response##*HTTP_STATUS:}"
         echo "HTTP status: $status"
-        grep -q '"status":"success"' /tmp/newsdata_resp.txt || { echo "❌ Newsdata smoke-test failed"; exit 1; }
+        echo "$body" | head -c 300
+        [ "$status" -eq 200 ] || { echo "❌ Newsdata smoke-test failed"; exit 1; }
 
     - name: 📄 Smoke-test DocCreator alone
       env:
@@ -84,7 +85,6 @@ jobs:
         from utils.google_docs_utils import create_daily_doc
 
         logging.basicConfig(level=logging.DEBUG)
-        # dummy story data
         dummy = [{
             "headline": "Smoke Test",
             "date": "1970-01-01",
@@ -94,9 +94,9 @@ jobs:
         }]
         try:
             url = create_daily_doc(dummy)
-            print("[SMOKE] create_daily_doc returned:", url, file=sys.stderr)
+            print("[SMOKE] create_daily_doc returned →", url, file=sys.stderr)
         except Exception as e:
-            print("[SMOKE] create_daily_doc threw:", type(e).__name__, e, file=sys.stderr)
+            print("[SMOKE] create_daily_doc threw →", type(e).__name__, e, file=sys.stderr)
             sys.exit(1)
         PY
 
