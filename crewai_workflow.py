@@ -5,54 +5,43 @@ from agents.compiler_agent    import get_agent as get_compiler
 from agents.doc_creator_agent import get_agent as get_doc_creator
 from agents.notifier_agent    import get_agent as get_notifier
 
-# ── Logging ─────────────────────────────────────────────────────
-logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
+# Configure top-level logging
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-def debug(msg, *args):
-    print("[DEBUG]", msg, *args, file=sys.stderr)
-
 def main():
-    debug("1️⃣  CuratorAgent: fetching top stories…")
+    # 1️⃣ Curate
     curator = get_curator()
-    stories = curator.run()  
-    debug("CuratorAgent returned", len(stories), "stories")
+    stories = curator.run()
+    logger.info("⓵ Curator fetched %d stories", len(stories))
     if not stories:
-        raise RuntimeError("CuratorAgent returned zero stories")
+        sys.exit("No stories; aborting.")
 
-    debug("2️⃣  ResearchAgent: enriching…")
+    # 2️⃣ Research
     researcher = get_researcher()
     enriched = researcher.run(stories)
-    debug("ResearchAgent returned", len(enriched), "enriched stories")
+    logger.info("⓶ Researcher enriched %d stories", len(enriched))
     if not enriched:
-        raise RuntimeError("ResearchAgent returned zero enriched stories")
+        sys.exit("Enrichment failed; aborting.")
 
-    debug("3️⃣  CompilerAgent: compiling…")
+    # 3️⃣ Compile
     compiler = get_compiler()
     compiled = compiler.run(enriched)
-    debug("CompilerAgent returned", len(compiled), "compiled items")
+    logger.info("⓷ Compiler produced %d items", len(compiled))
     if not compiled:
-        raise RuntimeError("CompilerAgent returned zero compiled items")
+        sys.exit("Compilation failed; aborting.")
 
-    debug("4️⃣  DocCreatorAgent: creating Google Doc…")
+    # 4️⃣ Doc creation
     doc_creator = get_doc_creator()
     url = doc_creator.run(compiled)
-    debug("DocCreatorAgent returned URL:", url)
-    if not url or "docs.google.com/document" not in url:
-        raise RuntimeError("Invalid Doc URL from DocCreatorAgent")
+    logger.info("⓸ Document created at %s", url)
+    if not url:
+        sys.exit("No doc URL; aborting.")
 
-    debug("5️⃣  NotifierAgent: sending notifications…")
+    # 5️⃣ Notify
     notifier = get_notifier()
     status = notifier.run(url)
-    debug("NotifierAgent returned status:", status)
-
-    logger.info("✅ Workflow complete—Doc URL: %s", url)
-    # also print the URL so GH Actions picks it up in logs
-    print("\n📄 Daily Digest is here:", url)
+    logger.info("⓹ Notifier status: %s", status)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logger.error("Workflow failed: %s", e)
-        sys.exit(1)
+    main()
