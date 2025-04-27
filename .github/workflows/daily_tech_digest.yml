@@ -1,7 +1,7 @@
 name: Daily Tech Digest
 on:
   schedule:
-    # 8 AM ET = 12:00 UTC (adjust for DST)
+    # 8 AM ET = 12:00 UTC (adjust for DST)
     - cron:  '0 12 * * *'
   workflow_dispatch: {}
 
@@ -9,13 +9,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4.0.0
+
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.0.0
         with:
-          python-version: '3.11'
-      - name: Install deps
-        run: pip install -r requirements.txt
+          python-version: '^3.11'
+
+      - name: Validate secrets
+        run: |
+          for secret in GOOGLE_SERVICE_ACCOUNT GOOGLE_DRIVE_FOLDER_ID NEWSDATA_API_KEY YOUTUBE_API_KEY OPENAI_API_KEY TWITTER_BEARER_TOKEN TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM_NUMBER NOTIFY_PHONE SMTP_USER SMTP_PASS SMTP_HOST SMTP_PORT NOTIFY_EMAIL
+          do
+            if [ -z "${{ secrets[$secret] }}" ]; then
+              echo "Error: Secret $secret is not set."
+              exit 1
+            fi
+          done
+
+      - name: Install dependencies
+        run: pip install -r requirements-lock.txt
+
+      - name: Check dependencies
+        run: pip check
+
       - name: Run CrewAI workflow
         env:
           GOOGLE_SERVICE_ACCOUNT:  ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
@@ -33,4 +50,6 @@ jobs:
           SMTP_HOST:               ${{ secrets.SMTP_HOST }}
           SMTP_PORT:               ${{ secrets.SMTP_PORT }}
           NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
-        run: python crewai_workflow.py
+        run: |
+          set -e
+          python crewai_workflow.py
