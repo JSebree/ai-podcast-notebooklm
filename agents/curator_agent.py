@@ -14,7 +14,7 @@ def get_agent():
             "In the last 36 hours, find breaking news articles **strictly** "
             "about artificial intelligence, quantum computing, or robotics."
             "Use only reputable tech publications (e.g. MIT Technology Review, "
-            "IEEE Spectrum, Wired, Science, Nature). Rank by impact and "
+            "IEEE Spectrum, Wired, Science, Nature). Rank by search term relevance and "
             "novelty, and return the **top 5 AI, quantum, and robotics** stories."
         ),
         backstory=(
