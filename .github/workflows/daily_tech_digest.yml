@@ -120,4 +120,4 @@ jobs:
         NOTIFY_EMAIL:            ${{ secrets.NOTIFY_EMAIL }}
       run: |
         set -e
-        python run_daily_digest.py
+        python crewai_workflow.py
