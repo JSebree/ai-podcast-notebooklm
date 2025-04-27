@@ -1,33 +1,49 @@
-import os, datetime, json
+import os
+import datetime
+import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+import re
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 SCOPES = [
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive",
 ]
 
-creds = service_account.Credentials.from_service_account_info(
-    json.loads(os.getenv("GOOGLE_SERVICE_ACCOUNT")), scopes=SCOPES
-)
+# Load and validate service account credentials
+service_account_info = os.getenv("GOOGLE_SERVICE_ACCOUNT")
+if not service_account_info:
+    raise EnvironmentError("Environment variable 'GOOGLE_SERVICE_ACCOUNT' is not set or empty.")
+try:
+    creds = service_account.Credentials.from_service_account_info(
+        json.loads(service_account_info), scopes=SCOPES
+    )
+except json.JSONDecodeError as e:
+    raise ValueError("Invalid JSON in 'GOOGLE_SERVICE_ACCOUNT':") from e
 
-docs_service  = build("docs",  "v1", credentials=creds, cache_discovery=False)
+docs_service = build("docs", "v1", credentials=creds, cache_discovery=False)
 drive_service = build("drive", "v3", credentials=creds, cache_discovery=False)
+
 
 def create_daily_doc(stories: list[dict]) -> str:
     today = datetime.datetime.now().strftime("%B %d, %Y")
     title = f"Emerging Tech Digest – {today}"
 
-    # 1️⃣ create doc
+    # 1️⃣ Create Google Doc
     try:
         doc = docs_service.documents().create(body={"title": title}).execute()
     except Exception as err:
-        print("[DEBUG] Docs API error:", err)
-        raise
-    doc_id = doc["documentId"]
-    print("[DEBUG] Created Doc →", doc_id)
+        raise RuntimeError("Failed to create Google Document") from err
 
-    # 2️⃣ move to specified folder
+    doc_id = doc["documentId"]
+    logger.debug("Created Doc → %s", doc_id)
+
+    # 2️⃣ Move to specified folder
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     if folder_id:
         try:
@@ -38,25 +54,15 @@ def create_daily_doc(stories: list[dict]) -> str:
                 removeParents=",".join(prev.get("parents", [])),
                 fields="id, parents",
             ).execute()
-            print("[DEBUG] Moved Doc; new parents →", folder_id)
+            logger.debug("Moved Doc; new parents → %s", folder_id)
         except Exception as err:
-            print("[DEBUG] Move error:", err)
-            raise
+            raise RuntimeError("Failed to move Google Document to folder") from err
+    else:
+        logger.debug("Folder ID not set. Skipping move step.")
 
-    # 3️⃣ optional direct share
+    # 3️⃣ Optional direct share
     share_email = os.getenv("SHARE_WITH_EMAIL")
     if share_email:
-        try:
-            drive_service.permissions().create(
-                fileId=doc_id,
-                body={"type": "user", "role": "writer", "emailAddress": share_email},
-                sendNotificationEmail=False,
-            ).execute()
-            print("[DEBUG] Shared Doc with", share_email)
-        except Exception as err:
-            print("[DEBUG] Share error:", err)
-
-    # 4️⃣ now insert content (placeholder)
-    # ... your batchUpdate requests here ...
-
-    return f"https://docs.google.com/document/d/{doc_id}"
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", share_email):
+            raise
+
