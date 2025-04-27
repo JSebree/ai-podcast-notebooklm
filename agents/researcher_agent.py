@@ -15,7 +15,8 @@ def get_agent():
         role="Tech Research Analyst",
         goal=(
             "For each curated headline, gather 3–5 authoritative supporting "
-            "resources (official article, YouTube, Twitter/LinkedIn)."
+            "resources (official article from reputable publications, YouTube "
+            "links, Twitter and LinkedIn posts). Make sure to obtain 3 - 5 links for each story."
         ),
         backstory=(
             "You verify sources and surface the most credible commentary on "
