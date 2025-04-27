@@ -61,7 +61,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: pip install -r requirements-lock.txt
+        run: pip install -r requirements.txt
 
       - name: Run CrewAI workflow
         env:
