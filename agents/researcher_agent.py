@@ -11,8 +11,8 @@ def get_agent():
         role="Tech Research Analyst",
         # ▶ Require 3–5 links *only* on the same topic, from approved sources
         goal=(
-            "For each headline, gather **3 to 5** distinct supporting links
-            "that are directly about that exact AI, quantum computing, or
+            "For each headline, gather **3 to 5** distinct supporting links "
+            "that are directly about that exact AI, quantum computing, or "
             "robotics topic. You must include at least:\n"
             "  • One article from a reputable publication,\n"
             "  • One YouTube video by an industry influencer,\n"
