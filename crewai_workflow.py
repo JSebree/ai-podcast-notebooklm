@@ -59,14 +59,25 @@ def define_tasks():
     )
 
     all_tasks = [curate_task, research_task, compile_task, doc_task, notify_task]
-    print("[DEBUG] Crew tasks scheduled:", [agent_name(t.agent) for t in all_tasks], file=sys.stderr)
+    print(
+        "[DEBUG] Crew tasks scheduled:",
+        [agent_name(t.agent) for t in all_tasks],
+        file=sys.stderr
+    )
     return all_tasks
 
 # ── run the crew ───────────────────────────────────────────────
 if __name__ == "__main__":
     crew = Crew(tasks=define_tasks())
-    run_fn = crew.kickoff if hasattr(crew, "kickoff") else crew.execute
-    result = run_fn()
+    print("[DEBUG] Dispatching Crew…", file=sys.stderr)
+
+    # run() executes the full chain; fallback to execute()
+    if hasattr(crew, "run"):
+        result = crew.run()
+    else:
+        result = crew.execute()
+
+    print("[DEBUG] Crew returned →", result, file=sys.stderr)
 
     # fail build if no Google-Docs URL produced
     if not result or "docs.google.com/document" not in str(result):
