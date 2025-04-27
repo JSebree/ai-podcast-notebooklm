@@ -9,7 +9,7 @@ from utils.social_utils import search_twitter, search_linkedin
 logger = logging.getLogger(__name__)
 API_KEY = os.getenv("NEWSDATA_API_KEY")
 BASE_URL = "https://newsdata.io/api/1/news"
-TECH_QUERY = "artificial intelligence OR quantum computing OR robotics"
+TECH_QUERY = "artificial intelligence OR AI OR quantum computing OR robotics"
 
 def fetch_top_news(max_items: int = 5) -> list[dict]:
     params = {
@@ -45,10 +45,10 @@ def enrich_story(story: dict) -> dict:
     """
     Build story["links"] to include:
       1. original article URL
-      2. up to 2 related articles
-      3. 1 YouTube video
-      4. 1 tweet
-      5. 1 LinkedIn post (stubbed)
+      2. related articles
+      3. YouTube videos
+      4. tweets/ X posts
+      5. LinkedIn posts (stubbed)
     """
     links = [story["url"]]
     title = story.get("title", "")
