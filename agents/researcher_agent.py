@@ -1,12 +1,15 @@
 import logging
+import sys
 from crewai import Agent
 from utils.web_search_utils import enrich_story
 
+# ── logging setup ────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def get_agent():
-    """Return a ResearchAgent configured to enrich stories."""
+    """Return the ResearchAgent instance."""
     return Agent(
         name="ResearchAgent",
         role="Tech Research Analyst",
@@ -21,24 +24,35 @@ def get_agent():
         run=run,
     )
 
+
 def run(stories: list[dict]):
-    """Enrich each story and return the updated list."""
+    """
+    Enrich each story and return the updated list.
+    Raises RuntimeError if the result list is empty (to abort the chain).
+    """
     if not isinstance(stories, list) or not all(isinstance(s, dict) for s in stories):
-        logger.error("Invalid input: 'stories' must be a list of dicts.")
-        return []
+        raise RuntimeError("ResearchAgent received invalid input (must be list[dict]).")
 
     if not stories:
-        logger.warning("The 'stories' list is empty. No enrichment performed.")
-        return []
+        raise RuntimeError("ResearchAgent received ZERO stories – aborting chain.")
 
-    enriched = []
+    print(f"[DEBUG] ResearchAgent received {len(stories)} stories", file=sys.stderr)
+
+    enriched: list[dict] = []
     for story in stories:
         try:
             enriched.append(enrich_story(story))
-        except Exception as e:
+        except Exception as err:
             logger.error(
                 "Failed to enrich story '%s' – %s",
                 story.get("title", "<no-title>"),
-                e,
+                err,
             )
+            print("[DEBUG] enrich_story error →", err, file=sys.stderr)
+
+    print(f"[DEBUG] ResearchAgent produced {len(enriched)} enriched stories", file=sys.stderr)
+
+    if not enriched:
+        raise RuntimeError("ResearchAgent produced ZERO enriched stories – aborting chain.")
+
     return enriched
