@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 import sys
 
 API_KEY = os.getenv("NEWSDATA_API_KEY")
+print("[DEBUG] NEWSDATA_API_KEY seen by Python:", repr(API_KEY)[:20], file=sys.stderr)
+
 if not API_KEY:
     raise EnvironmentError("Environment variable 'NEWSDATA_API_KEY' is not set!")
 
