@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os, sys, logging
 from datetime import datetime
 
@@ -17,40 +16,46 @@ from utils.email_utils  import send_email
 logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+def debug(msg, *args):
+    print("[DEBUG]", msg, *args, file=sys.stderr)
+
 def main():
-    logger.info("🔍 1. Fetching top tech stories…")
+    debug("1️⃣  CuratorAgent: fetching top stories…")
     stories = fetch_top_news(max_items=5)
+    debug("CuratorAgent returned", len(stories), "stories")
     if not stories:
         logger.error("No stories fetched—aborting.")
         sys.exit(1)
 
-    logger.info("📝 2. Enriching stories…")
+    debug("2️⃣  ResearchAgent: enriching…")
     enriched = []
     for s in stories:
         try:
             enriched.append(enrich_story(s))
         except Exception as e:
             logger.error("Enrich failed for %r: %s", s.get("title"), e)
+    debug("ResearchAgent returned", len(enriched), "enriched stories")
     if not enriched:
         logger.error("No enriched stories—aborting.")
         sys.exit(1)
 
-    logger.info("✍️  3. Compiling summaries…")
+    debug("3️⃣  CompilerAgent: compiling…")
     compiled = compile_fn(enriched)
+    debug("CompilerAgent returned", len(compiled), "compiled items")
     if not isinstance(compiled, list) or not compiled:
         logger.error("Compilation failed or returned empty—aborting.")
         sys.exit(1)
 
-    logger.info("📄 4. Creating Google Doc…")
+    debug("4️⃣  DocCreatorAgent: creating Google Doc…")
     try:
         url = create_daily_doc(compiled)
     except Exception as e:
         logger.exception("Doc creation failed")
         sys.exit(1)
+    debug("DocCreatorAgent returned URL:", url)
+    logger.info("Google Doc created at: %s", url)
 
-    logger.info("✅ Google Doc created at: %s", url)
-
-    logger.info("📲 5. Sending SMS notification…")
+    debug("5️⃣  NotifierAgent: sending notifications…")
     try:
         send_sms(url)
     except Exception as sms_err:
