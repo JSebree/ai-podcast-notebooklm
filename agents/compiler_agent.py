@@ -1,5 +1,6 @@
 import os
 import logging
+import sys
 from crewai import Agent
 from openai import OpenAI
 
@@ -35,6 +36,7 @@ def get_agent():
     )
 
 def run(stories: list[dict]):
+    print("[DEBUG] CompilerAgent received", len(stories), "stories", file=sys.stderr)
     if not stories:
         logger.warning("No stories provided to the `run` function.")
         return []
@@ -81,5 +83,6 @@ def run(stories: list[dict]):
                 "links": story["links"],
             }
         )
+        print("[DEBUG] CompilerAgent produced", len(compiled), "items", file=sys.stderr)
 
     return compiled
