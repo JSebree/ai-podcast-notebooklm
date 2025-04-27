@@ -1,16 +1,23 @@
 import os
+import logging
 from crewai import Agent
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-PROMPT_TITLE = (
-    "Write a punchy podcast episode title (under 12 words) summarizing: "
-)
-PROMPT_SUMMARY = (
-    "Provide a 6-sentence journalistic summary of the following tech news:\n"
-)
+# Load API key and validate
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise EnvironmentError("Environment variable 'OPENAI_API_KEY' is not set.")
+client = OpenAI(api_key=api_key)
 
+# Model configuration
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o")
+
+PROMPT_TITLE = "Write a punchy podcast episode title (under 12 words) summarizing: "
+PROMPT_SUMMARY = "Provide a 6-sentence journalistic summary of the following tech news:\n"
 
 def get_agent():
     return Agent(
@@ -27,25 +34,44 @@ def get_agent():
         run=run,
     )
 
-
 def run(stories: list[dict]):
+    if not stories:
+        logger.warning("No stories provided to the `run` function.")
+        return []
+
     compiled = []
 
     for story in stories:
-        # --- generate podcast title ---
-        title_prompt = PROMPT_TITLE + story["title"]
-        podcast_title = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": title_prompt}],
-        ).choices[0].message.content.strip()
+        if not isinstance(story, dict):
+            logger.error(f"Invalid story format: {story}")
+            continue
 
-        # --- generate summary ---
-        context = story.get("article_snippet") or story["title"]
-        summary_prompt = PROMPT_SUMMARY + context
-        summary = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": summary_prompt}],
-        ).choices[0].message.content.strip()
+        if "title" not in story or "links" not in story:
+            logger.error(f"Missing required keys in story: {story}")
+            continue
+
+        try:
+            # --- generate podcast title ---
+            title_prompt = PROMPT_TITLE + story["title"]
+            podcast_title = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": title_prompt}],
+            ).choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"Error generating podcast title for story '{story['title']}': {e}")
+            podcast_title = "Error generating title"
+
+        try:
+            # --- generate summary ---
+            context = story.get("article_snippet") or story["title"]
+            summary_prompt = PROMPT_SUMMARY + context
+            summary = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": summary_prompt}],
+            ).choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"Error generating summary for story '{story['title']}': {e}")
+            summary = "Error generating summary"
 
         compiled.append(
             {
