@@ -9,7 +9,6 @@ def get_agent():
     return Agent(
         name="ResearchAgent",
         role="Tech Research Analyst",
-        # ▶ Require 3–5 links *only* on the same topic, from approved sources
         goal=(
             "For each headline, gather **3 to 5** distinct supporting links "
             "that are directly about that exact AI, quantum computing, or "
@@ -27,18 +26,21 @@ def get_agent():
         run=run,
     )
 
-def run(stories: list[dict]):
+
+def run(stories: list[dict]) -> list[dict]:
     enriched = []
     for s in stories:
         try:
             item = enrich_story(s)
-            # enforce link-count
             links = item.get("links", [])
-            if not (3 <= len(links) <= 5):
+            # warn only if fewer than 3 links
+            if len(links) < 3:
                 logger.warning(
-                    "Story '%s' yielded %d links—expecting 3–5", s["title"], len(links)
+                    "Story '%s' yielded only %d links; expected at least 3.",
+                    s.get("title", "<no-title>"),
+                    len(links),
                 )
             enriched.append(item)
         except Exception as e:
-            logger.error("Failed to enrich '%s': %s", s.get("title"), e)
+            logger.error("Failed to enrich '%s': %s", s.get("title", "<no-title>"), e)
     return enriched
