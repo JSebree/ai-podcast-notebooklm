@@ -1,8 +1,8 @@
-import os, datetime, json, re, sys, logging
+import os, base64, json, datetime, re, sys, logging
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-# ── logging setup ───────────────────────────────────────────────
+# ── logging setup ──────────────────────────────────────────────
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -11,72 +11,66 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# ── load service-account creds ─────────────────────────────────
-sa_json_b64 = os.getenv("GOOGLE_SERVICE_ACCOUNT")
-if not sa_json_b64:
+# ── load + decode service-account creds ────────────────────────
+sa_b64 = os.getenv("GOOGLE_SERVICE_ACCOUNT")
+if not sa_b64:
     raise EnvironmentError("GOOGLE_SERVICE_ACCOUNT env var is empty.")
+
 try:
-    creds = service_account.Credentials.from_service_account_info(
-        json.loads(sa_json_b64), scopes=SCOPES
-    )
-except json.JSONDecodeError as err:
-    raise ValueError("GOOGLE_SERVICE_ACCOUNT contains invalid JSON") from err
+    sa_info = json.loads(base64.b64decode(sa_b64).decode("utf-8"))
+except (base64.binascii.Error, UnicodeDecodeError, json.JSONDecodeError) as err:
+    raise ValueError("GOOGLE_SERVICE_ACCOUNT secret must be base64-encoded JSON") from err
+
+creds = service_account.Credentials.from_service_account_info(sa_info, scopes=SCOPES)
 
 docs_service  = build("docs",  "v1", credentials=creds, cache_discovery=False)
 drive_service = build("drive", "v3", credentials=creds, cache_discovery=False)
 
+# ── helper ─────────────────────────────────────────────────────
+def _debug(msg, *vals):
+    print("[DEBUG]", msg, *vals, file=sys.stderr)
 
+# ── main function ──────────────────────────────────────────────
 def create_daily_doc(stories: list[dict]) -> str:
-    """Create the Google Doc, move it to the folder, share, and return its URL."""
+    """Create the Google Doc, move it, share it, and return its URL."""
     today = datetime.datetime.now().strftime("%B %d, %Y")
     title = f"Emerging Tech Digest – {today}"
 
-    # 1️⃣  Create Doc
-    print("[DEBUG] Creating Google Doc titled:", title, file=sys.stderr)
-    try:
-        doc = docs_service.documents().create(body={"title": title}).execute()
-    except Exception as err:
-        logger.error("Docs API create failed: %s", err)
-        raise
+    # 1️⃣  create doc
+    _debug("Creating Google Doc titled:", title)
+    doc = docs_service.documents().create(body={"title": title}).execute()
     doc_id = doc["documentId"]
-    print("[DEBUG] Created Doc →", doc_id, file=sys.stderr)
+    _debug("Created Doc →", doc_id)
 
-    # 2️⃣  Move into folder (if provided)
+    # 2️⃣  move into folder
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     if folder_id:
-        print("[DEBUG] Moving Doc into folder:", folder_id, file=sys.stderr)
-        try:
-            prev = drive_service.files().get(fileId=doc_id, fields="parents").execute()
-            drive_service.files().update(
-                fileId=doc_id,
-                addParents=folder_id,
-                removeParents=",".join(prev.get("parents", [])),
-                fields="id, parents",
-            ).execute()
-            print("[DEBUG] Moved Doc; new parents →", folder_id, file=sys.stderr)
-        except Exception as err:
-            logger.error("Drive API move failed: %s", err)
-            raise
+        _debug("Moving Doc into folder:", folder_id)
+        prev = drive_service.files().get(fileId=doc_id, fields="parents").execute()
+        drive_service.files().update(
+            fileId=doc_id,
+            addParents=folder_id,
+            removeParents=",".join(prev.get("parents", [])),
+            fields="id, parents",
+            supportsAllDrives=True,
+        ).execute()
+        _debug("Moved Doc; new parents →", folder_id)
     else:
-        print("[DEBUG] GOOGLE_DRIVE_FOLDER_ID not set – skipping move.", file=sys.stderr)
+        _debug("GOOGLE_DRIVE_FOLDER_ID not set – skipping move.")
 
-    # 3️⃣  Optional share with your Gmail
+    # 3️⃣  optional share with your Gmail
     share_email = os.getenv("SHARE_WITH_EMAIL")
     if share_email:
         if not re.match(r"[^@]+@[^@]+\.[^@]+", share_email):
             raise ValueError(f"SHARE_WITH_EMAIL is invalid: {share_email}")
 
-        print("[DEBUG] Sharing Doc with", share_email, file=sys.stderr)
-        try:
-            drive_service.permissions().create(
-                fileId=doc_id,
-                body={"type": "user", "role": "writer", "emailAddress": share_email},
-                sendNotificationEmail=False,
-            ).execute()
-            print("[DEBUG] Shared Doc with", share_email, file=sys.stderr)
-        except Exception as err:
-            logger.error("Drive API share failed: %s", err)
-            # share failure isn’t fatal; continue
+        _debug("Sharing Doc with", share_email)
+        drive_service.permissions().create(
+            fileId=doc_id,
+            body={"type": "user", "role": "writer", "emailAddress": share_email},
+            sendNotificationEmail=False,
+        ).execute()
+        _debug("Shared Doc with", share_email)
 
-    # 4️⃣  Return the public link
+    # 4️⃣  return link
     return f"https://docs.google.com/document/d/{doc_id}"
