@@ -1,79 +1,58 @@
 import logging, sys
-from crewai import Task, Crew
-from agents.curator_agent    import get_agent as curator
-from agents.researcher_agent import get_agent as researcher
-from agents.compiler_agent   import get_agent as compiler
-from agents.doc_creator_agent import get_agent as doc_creator
-from agents.notifier_agent   import get_agent as notifier
+from agents.curator_agent     import get_agent as get_curator
+from agents.researcher_agent  import get_agent as get_researcher
+from agents.compiler_agent    import get_agent as get_compiler
+from agents.doc_creator_agent import get_agent as get_doc_creator
+from agents.notifier_agent    import get_agent as get_notifier
 
-# ── Logging setup ───────────────────────────────────────────────
-logging.basicConfig(level=logging.INFO)
+# ── Logging ─────────────────────────────────────────────────────
+logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
-print("[DEBUG] crewai_workflow starting", file=sys.stderr)
 
-# ── Instantiate agents ─────────────────────────────────────────
-curator_agent   = curator()
-research_agent  = researcher()
-compiler_agent  = compiler()
-doc_agent       = doc_creator()
-notifier_agent  = notifier()
+def debug(msg, *args):
+    print("[DEBUG]", msg, *args, file=sys.stderr)
 
-def agent_name(agent):
-    """Safely extract an Agent’s name for debug output."""
-    return getattr(getattr(agent, "profile", None), "name", repr(agent))
+def main():
+    debug("1️⃣  CuratorAgent: fetching top stories…")
+    curator = get_curator()
+    stories = curator.run()  
+    debug("CuratorAgent returned", len(stories), "stories")
+    if not stories:
+        raise RuntimeError("CuratorAgent returned zero stories")
 
-# ── Define the full chain of tasks ──────────────────────────────
-def define_tasks():
-    curate = Task(
-        agent=curator_agent,
-        description="Pick top 5 stories from last 24 h.",
-        expected_output="list[dict]",
-    )
-    research = Task(
-        agent=research_agent,
-        depends_on=curate,
-        description="Enrich each story with links + snippet.",
-        expected_output="list[dict] enriched",
-    )
-    compile_ = Task(
-        agent=compiler_agent,
-        depends_on=research,
-        description="Generate summary + podcast title.",
-        expected_output="compiled list[dict]",
-    )
-    create_doc = Task(
-        agent=doc_agent,
-        depends_on=compile_,
-        description="Create Google Doc and return its URL.",
-        expected_output="doc URL (str)",
-    )
-    notify = Task(
-        agent=notifier_agent,
-        depends_on=create_doc,
-        description="Send SMS + email with the URL.",
-        expected_output="confirmation str",
-    )
+    debug("2️⃣  ResearchAgent: enriching…")
+    researcher = get_researcher()
+    enriched = researcher.run(stories)
+    debug("ResearchAgent returned", len(enriched), "enriched stories")
+    if not enriched:
+        raise RuntimeError("ResearchAgent returned zero enriched stories")
 
-    tasks = [curate, research, compile_, create_doc, notify]
-    print(
-        "[DEBUG] Crew tasks scheduled →",
-        [agent_name(t.agent) for t in tasks],
-        file=sys.stderr
-    )
-    return tasks
+    debug("3️⃣  CompilerAgent: compiling…")
+    compiler = get_compiler()
+    compiled = compiler.run(enriched)
+    debug("CompilerAgent returned", len(compiled), "compiled items")
+    if not compiled:
+        raise RuntimeError("CompilerAgent returned zero compiled items")
 
-# ── Run the CrewAI pipeline ──────────────────────────────────────
+    debug("4️⃣  DocCreatorAgent: creating Google Doc…")
+    doc_creator = get_doc_creator()
+    url = doc_creator.run(compiled)
+    debug("DocCreatorAgent returned URL:", url)
+    if not url or "docs.google.com/document" not in url:
+        raise RuntimeError("Invalid Doc URL from DocCreatorAgent")
+
+    debug("5️⃣  NotifierAgent: sending notifications…")
+    notifier = get_notifier()
+    status = notifier.run(url)
+    debug("NotifierAgent returned status:", status)
+
+    logger.info("✅ Workflow complete—Doc URL: %s", url)
+    # also print the URL so GH Actions picks it up in logs
+    print("\n📄 Daily Digest is here:", url)
+
 if __name__ == "__main__":
-    crew = Crew(tasks=define_tasks())
-    print("[DEBUG] Dispatching Crew via kickoff()", file=sys.stderr)
-
-    # kickoff() is the only method available on your Crew
-    result = crew.kickoff()
-
-    print("[DEBUG] Crew returned →", result, file=sys.stderr)
-
-    # Fail fast if no valid Google Docs link
-    if not result or "docs.google.com/document" not in str(result):
-        raise RuntimeError("❌ No Google Doc URL produced – aborting build.")
-
-    logger.info("✅ Workflow finished successfully. Doc URL: %s", result)
+    try:
+        main()
+    except Exception as e:
+        logger.error("Workflow failed: %s", e)
+        sys.exit(1)
