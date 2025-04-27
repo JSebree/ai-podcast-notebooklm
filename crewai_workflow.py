@@ -71,11 +71,17 @@ if __name__ == "__main__":
     crew = Crew(tasks=define_tasks())
     print("[DEBUG] Dispatching Crew…", file=sys.stderr)
 
-    # run() executes the full chain; fallback to execute()
-    if hasattr(crew, "run"):
+    # ① Try kickoff() first (it exists on your version)
+    if hasattr(crew, "kickoff"):
+        result = crew.kickoff()
+    # ② Then try run()
+    elif hasattr(crew, "run"):
         result = crew.run()
-    else:
+    # ③ Finally try execute()
+    elif hasattr(crew, "execute"):
         result = crew.execute()
+    else:
+        raise AttributeError("Crew object has no kickoff/run/execute method!")
 
     print("[DEBUG] Crew returned →", result, file=sys.stderr)
 
