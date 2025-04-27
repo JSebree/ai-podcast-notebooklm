@@ -13,9 +13,9 @@ def get_agent():
         name="CuratorAgent",
         role="News Curator",
         goal=(
-            "Identify the five most important breaking stories in AI, "
-            "quantum computing, and robotics every from the past 36 hours."
-            "**IMPORTANT! only gather stpries from the past 36 hours from this date."
+            "***IMPORTANT*** Identify the five most important breaking stories in **AI, "
+            "**quantum computing, and **robotics published within the past 36 hours."
+            "**IMPORTANT! only gather stories on these topics published within the past 36 hours from this date."
             "Pull stories from reputale publications, Linkedin and Twitter posts "
             "from industry leaders and influencers, and YouTube influencer who specialize "
             "in AI, quantum computing, and robotics." 
