@@ -1,54 +1,41 @@
 import logging
-import sys
 from crewai import Agent
 from utils.web_search_utils import fetch_top_news
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 def get_agent():
-    """Return the CuratorAgent instance."""
     return Agent(
         name="CuratorAgent",
         role="News Curator",
+        # ▶ Focus only on AI, quantum computing, or robotics stories
         goal=(
-            "***IMPORTANT*** Identify the five most important breaking stories in **AI, "
-            "**quantum computing, and **robotics published within the past 36 hours."
-            "**IMPORTANT! only gather stories on these topics published within the past 36 hours from this date."
-            "Pull stories from reputale publications, Linkedin and Twitter posts "
-            "from industry leaders and influencers, and YouTube influencer who specialize "
-            "in AI, quantum computing, and robotics." 
+            "In the last 24 hours, find breaking news articles **strictly**
+            "about artificial intelligence, quantum computing, or robotics.
+            "Use only reputable tech publications (e.g. MIT Technology Review,
+            "IEEE Spectrum, Wired, Science, Nature). Rank by impact and
+            "novelty, and return the **top 5** stories."
         ),
         backstory=(
-            "You are an experienced tech journalist with a keen eye for "
-            "industry-moving announcements and scientific breakthroughs."
+            "You are a veteran tech journalist who never strays outside the
+            "fields of AI, quantum computing, and robotics, and only trusts
+            "well–known outlets."
         ),
         run=run,
     )
 
-
-def run(_=None, max_items: int = 5):
-    """
-    Fetch and validate the top news stories.
-
-    :param _ : (ignored) dependency input from CrewAI chain.
-    :param max_items: Number of stories to fetch.
-    :return: List of story dicts.
-    :raises RuntimeError: if zero stories are fetched.
-    """
-    stories = fetch_top_news(max_items=max_items)
-
-    # ── validate structure ─────────────────────────────
-    if not isinstance(stories, list):
-        raise RuntimeError("fetch_top_news() returned non-list object")
-
-    if not stories:
-        raise RuntimeError("CuratorAgent fetched ZERO stories – aborting chain.")
-
-    for item in stories:
-        if not isinstance(item, dict) or not all(k in item for k in ("title", "url", "rank")):
-            raise RuntimeError(f"Invalid news item format: {item}")
-
-    print(f"[DEBUG] CuratorAgent fetched {len(stories)} stories", file=sys.stderr)
-    return stories
+def run(max_items=5):
+    try:
+        news = fetch_top_news(max_items=max_items)
+        # Validate each headline contains one of the three topics
+        valid = [n for n in news if any(
+            kw in n["title"].lower()
+            for kw in ["artificial intelligence","ai","quantum","robot","robotics"]
+        )]
+        if len(valid) < len(news):
+            logger.warning("Filtered out %d off-topic stories", len(news)-len(valid))
+        return valid[:max_items]
+    except Exception as e:
+        logger.error("CuratorAgent error: %s", e)
+        return []
