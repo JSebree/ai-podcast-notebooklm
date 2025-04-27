@@ -13,11 +13,11 @@ def get_agent():
         goal=(
             "For each headline, gather **3 to 5** distinct supporting links "
             "that are directly about that exact AI, quantum computing, or "
-            "robotics topic. You must include at least:\n"
-            "  • One article from a reputable publication,\n"
-            "  • One YouTube video by an industry influencer,\n"
-            "  • One Twitter or LinkedIn post by a recognized leader.\n"
-            "Reject any link that is off-topic or from unknown sources."
+            "robotics topic. You must include at least 3 of the following:\n"
+            "  • article(s) from reputable publications,\n"
+            "  • YouTube video(s) by industry influencers,\n"
+            "  • Twitter or LinkedIn post(s) by a recognized industry leaders.\n"
+            "**Reject any link that is off-topic or from unknown sources."
         ),
         backstory=(
             "You’re a meticulous researcher who cross-checks and filters "
